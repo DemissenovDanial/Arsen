@@ -28,12 +28,26 @@ class Admins(db.Model):
         return check_password_hash(self.password, password)
 
 
+# Для добавления столбца 'data' в таблицу
 class File(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(255), nullable=False)
     upload_date = db.Column(db.DateTime, default=db.func.current_timestamp())
     hash = db.Column(db.String(255), unique=True, nullable=False)
-    data = db.Column(db.LargeBinary, nullable=False)  # Сохраняем данные файла как BLOB
+    data = db.Column(db.LargeBinary)  # Добавляем столбец 'data'
+
+# Выполните миграцию
+from flask_migrate import Migrate, MigrateCommand
+from flask_script import Manager
+
+migrate = Migrate(app, db)
+manager = Manager(app)
+manager.add_command('db', MigrateCommand)
+
+# Команда для выполнения миграции:
+# python manage.py db migrate
+# python manage.py db upgrade
+
 
 # Функция для проверки JWT токена
 def token_required(f):
