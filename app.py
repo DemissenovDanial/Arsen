@@ -109,11 +109,6 @@ def upload_file(current_user):
         filename = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
         file.save(filename)
 
-        # Сохраняем информацию о файле в базу данных
-        new_file = File(filename=file.filename, hash=file_hash)
-        db.session.add(new_file)
-        db.session.commit()
-
         flash('Файл успешно загружен', 'success')
         return redirect(url_for('admin_dashboard'))
 
@@ -121,18 +116,14 @@ def upload_file(current_user):
 @app.route('/delete/<int:file_id>', methods=['POST'])
 @token_required
 def delete_file(current_user, file_id):
-    file = File.query.get(file_id)
+    file = file_id
     if file:
-        try:
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], file.filename))
-            db.session.delete(file)
-            db.session.commit()
-            flash('Файл успешно удален', 'success')
-        except Exception as e:
-            flash(f'Ошибка при удалении файла: {e}', 'error')
+        os.remove(os.path.join(app.config['UPLOAD_FOLDER'], file))
+        flash('Файл успешно удален', 'success')
+    except Exception as e:
+        flash(f'Ошибка при удалении файла: {e}', 'error')
     else:
         flash('Файл не найден', 'error')
-
     return redirect(url_for('admin_dashboard'))
 
 # Скачивание файла по хешу
