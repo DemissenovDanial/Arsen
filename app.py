@@ -7,6 +7,16 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_migrate import Migrate  # Импортируем Migrate для работы с миграциями
 from functools import wraps
+from app import db
+from app import File
+
+# Удаление всех записей в таблице файлов
+File.query.delete()
+
+# Применение изменений в базе данных
+db.session.commit()
+
+print("Все записи файлов удалены.")
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'  # Этот ключ используется для подписи JWT
