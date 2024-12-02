@@ -158,6 +158,20 @@ def download(file_hash):
     flash('Файл не найден', 'error')
     return redirect(url_for('admin_dashboard'))
 
+# Просмотр и скачивание файла
+@app.route('/view/<file_hash>')
+def view_file(file_hash):
+    file = File.query.filter_by(hash=file_hash).first_or_404()
+    if file.data:
+        try:
+            # Выводим файл для просмотра и предоставляем ссылку для скачивания
+            return render_template('view_file.html', file=file)
+        except Exception as e:
+            flash(f'Ошибка при отображении файла: {e}', 'error')
+            return redirect(url_for('admin_dashboard'))
+    flash('Файл не найден', 'error')
+    return redirect(url_for('admin_dashboard'))
+
 # Логин/Логаут администратора
 @app.route('/logout')
 def logout():
