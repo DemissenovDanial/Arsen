@@ -83,7 +83,7 @@ def login():
         password = request.form['password']
         admin = Admins.query.filter_by(username=username).first()
         if admin and check_password_hash(admin.password, password):
-            token = jwt.encode({'id': admin.id, 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)}, app.config['SECRET_KEY'], algorithm="HS256")
+            token = jwt.encode({'id': admin.id, 'exp': datetime.utcnow() + datetime.timedelta(hours=1)}, app.config['SECRET_KEY'], algorithm="HS256")
             session['token'] = token  # Сохраняем токен в сессии
             return redirect(url_for('admin_dashboard'))
         else:
