@@ -40,7 +40,7 @@
 
     <script>
         {% if file_type == 'pdf' %}
-            var url = "{{ url_for('serve_file', file_hash=file.hash) }}"; // Путь к PDF файлу
+            var url = "{{ url_for('serve_file_data', file_hash=file.hash) }}"; // Путь к PDF файлу
             var canvas = document.getElementById('pdf-canvas');
             var ctx = canvas.getContext('2d');  // Контекст для рисования на холсте
 
