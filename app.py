@@ -8,6 +8,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_migrate import Migrate  # Импортируем Migrate для работы с миграциями
 from functools import wraps
 import io
+import mimetypes
+from werkzeug.utils import secure_filename
+from docx import Document  # Для обработки DOCX файлов
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'  # Этот ключ используется для подписи JWT
@@ -36,6 +39,13 @@ class File(db.Model):
     upload_date = db.Column(db.DateTime, default=db.func.current_timestamp())
     hash = db.Column(db.String(255), unique=True, nullable=False)
     data = db.Column(db.LargeBinary)  # Столбец для хранения данных файла
+
+def extract_text_from_docx(file_data):
+    doc = Document(io.BytesIO(file_data))
+    text_content = []
+    for para in doc.paragraphs:
+        text_content.append(para.text)
+    return '\n'.join(text_content)
 
 # Функция для проверки JWT токена
 def token_required(f):
@@ -164,14 +174,38 @@ def view_file(file_hash):
     file = File.query.filter_by(hash=file_hash).first_or_404()
     if file.data:
         try:
-            # Выводим файл для просмотра и предоставляем ссылку для скачивания
-            return render_template('view_file.html', file=file)
+            # Получаем MIME тип файла для правильной обработки
+            mime_type, _ = mimetypes.guess_type(file.filename)
+
+            # Если это изображение
+            if mime_type and mime_type.startswith('image'):
+                return render_template('view_file.html', file=file, file_type='image')
+
+            # Если это текстовый файл
+            elif mime_type == 'text/plain':
+                text_content = file.data.decode('utf-8')  # Преобразуем байты в строку
+                return render_template('view_file.html', file=file, file_type='text', text_content=text_content)
+
+            # Если это PDF файл
+            elif mime_type == 'application/pdf':
+                return render_template('view_file.html', file=file, file_type='pdf')
+
+            # Если это DOCX файл
+            elif mime_type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+                text_content = extract_text_from_docx(file.data)
+                return render_template('view_file.html', file=file, file_type='docx', text_content=text_content)
+
+            else:
+                # Для остальных типов файлов показываем только кнопку для скачивания
+                return render_template('view_file.html', file=file, file_type='other')
+
         except Exception as e:
             flash(f'Ошибка при отображении файла: {e}', 'error')
             return redirect(url_for('admin_dashboard'))
+
     flash('Файл не найден', 'error')
     return redirect(url_for('admin_dashboard'))
-
+    
 # Логин/Логаут администратора
 @app.route('/logout')
 def logout():
