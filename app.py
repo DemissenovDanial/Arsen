@@ -12,7 +12,7 @@ import io
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'  # Этот ключ используется для подписи JWT
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://edo_db:9CxmsGqtplllIiNHeLWQRNlLQfv7IfAE@dpg-ct67sblumphs73949hd0-a/edo_db'
-app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['SQLALCHEMY_ECHO'] = True  # Включает вывод SQL-запросов в консоль
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)  # Инициализируем миграции
@@ -92,7 +92,6 @@ def admin_dashboard(current_user):
 
 
 # Загрузка файла
-# Загрузка файла
 @app.route('/upload', methods=['POST'])
 @token_required
 def upload_file(current_user):
@@ -107,21 +106,23 @@ def upload_file(current_user):
 
     if file:
         # Генерация хеша для файла
-        if not os.path.exists(app.config['UPLOAD_FOLDER']):
-            os.makedirs(app.config['UPLOAD_FOLDER'])
         file_hash = hashlib.sha256(file.filename.encode()).hexdigest()
-        filename = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-        file.save(filename)
 
         # Чтение данных файла в байты
         file_data = file.read()
+        if not file_data:
+            flash('Не удалось прочитать данные файла', 'error')
+            return redirect(url_for('admin_dashboard'))
 
         # Сохраняем информацию о файле в базу данных
         new_file = File(filename=file.filename, hash=file_hash, data=file_data)
-        db.session.add(new_file)
-        db.session.commit()
+        try:
+            db.session.add(new_file)
+            db.session.commit()
+            flash('Файл успешно загружен в базу данных', 'success')
+        except Exception as e:
+            flash(f'Ошибка при сохранении файла в базе данных: {e}', 'error')
 
-        flash('Файл успешно загружен', 'success')
         return redirect(url_for('admin_dashboard'))
 
 
@@ -133,7 +134,6 @@ def delete_file(current_user, file_id):
     file = File.query.get(file_id)
     if file:
         try:
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], file.filename))
             db.session.delete(file)
             db.session.commit()
             flash('Файл успешно удален', 'success')
@@ -148,26 +148,15 @@ def delete_file(current_user, file_id):
 # Скачивание файла по хешу
 @app.route('/download/<file_hash>')
 def download(file_hash):
-    # Ищем файл по хешу
-    file = File.query.filter_by(hash=file_hash).first()
-
-    # Если файл не найден, возвращаем ошибку
-    if not file:
-        flash('Файл не найден', 'error')
-        return redirect(url_for('admin_dashboard'))
-    
-    # Проверяем, есть ли данные в файле
-    if not file.data:
-        flash('Данные файла не найдены', 'error')
-        return redirect(url_for('admin_dashboard'))
-    
-    try:
-        # Отправляем файл в виде вложения
-        return send_file(io.BytesIO(file.data), as_attachment=True, attachment_filename=file.filename, mimetype='application/octet-stream')
-    except Exception as e:
-        flash(f'Ошибка при отправке файла: {e}', 'error')
-        return redirect(url_for('admin_dashboard'))
-
+    file = File.query.filter_by(hash=file_hash).first_or_404()
+    if file.data:
+        try:
+            return send_file(io.BytesIO(file.data), as_attachment=True, download_name=file.filename)
+        except Exception as e:
+            flash(f'Ошибка при отправке файла: {e}', 'error')
+            return redirect(url_for('admin_dashboard'))
+    flash('Файл не найден', 'error')
+    return redirect(url_for('admin_dashboard'))
 
 # Логин/Логаут администратора
 @app.route('/logout')
