@@ -160,7 +160,6 @@ def logout():
 
 # Инициализация базы данных и создание таблиц
 with app.app_context():
-    File.__table__.drop(db.engine)
     db.create_all()
 
 # Старт сервера
