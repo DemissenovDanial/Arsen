@@ -144,11 +144,25 @@ def delete_file(current_user, file_id):
 # Скачивание файла по хешу
 @app.route('/download/<file_hash>')
 def download(file_hash):
-    file = File.query.filter_by(hash=file_hash).first_or_404()
-    if file.data:
+    # Ищем файл по хешу
+    file = File.query.filter_by(hash=file_hash).first()
+
+    # Если файл не найден, возвращаем ошибку
+    if not file:
+        flash('Файл не найден', 'error')
+        return redirect(url_for('admin_dashboard'))
+    
+    # Проверяем, есть ли данные в файле
+    if not file.data:
+        flash('Данные файла не найдены', 'error')
+        return redirect(url_for('admin_dashboard'))
+    
+    try:
+        # Отправляем файл в виде вложения
         return send_file(io.BytesIO(file.data), as_attachment=True, attachment_filename=file.filename, mimetype='application/octet-stream')
-    flash('Файл не найден', 'error')
-    return redirect(url_for('admin_dashboard'))
+    except Exception as e:
+        flash(f'Ошибка при отправке файла: {e}', 'error')
+        return redirect(url_for('admin_dashboard'))
 
 
 # Логин/Логаут администратора
