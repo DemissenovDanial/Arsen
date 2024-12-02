@@ -2,6 +2,7 @@ import os
 import hashlib
 import jwt
 import datetime
+from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory, session, flash, jsonify, send_file
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -36,7 +37,7 @@ class Admins(db.Model):
 class File(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(255), nullable=False)
-    upload_date = db.Column(db.DateTime, default=db.func.current_timestamp())
+    upload_date = db.Column(db.DateTime, default=datetime.utcnow)
     hash = db.Column(db.String(255), unique=True, nullable=False)
     data = db.Column(db.LargeBinary)  # Столбец для хранения данных файла
 
