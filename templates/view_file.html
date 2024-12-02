@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Просмотр файла</title>
+</head>
+<body>
+    <h1>Просмотр файла</h1>
+    
+    <h2>{{ file.filename }}</h2>
+    
+    <!-- Пример для изображений -->
+    {% if file.filename.endswith('.jpg') or file.filename.endswith('.png') %}
+        <img src="{{ url_for('view_file', file_hash=file.hash) }}" alt="Просмотр файла" style="max-width: 100%; height: auto;">
+    {% elif file.filename.endswith('.txt') %}
+        <pre>{{ file.data.decode('utf-8') }}</pre>
+    {% else %}
+        <p>Невозможно отобразить файл.</p>
+    {% endif %}
+    
+    <hr>
+    
+    <!-- Ссылка для скачивания -->
+    <a href="{{ url_for('download', file_hash=file.hash) }}" class="btn btn-primary">Скачать файл</a>
+    
+    <br>
+    <a href="{{ url_for('admin_dashboard') }}">Вернуться в админ панель</a>
+</body>
+</html>
