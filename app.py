@@ -66,7 +66,13 @@ def token_required(f):
         return f(current_user, *args, **kwargs)
     return decorated_function
 
-
+@app.after_request
+def add_headers(response: Response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['Cache-Control'] = 'public, max-age=86400'  # кешировать на 1 день
+    response.headers['Content-Type'] = 'text/html; charset=utf-8'  # установить кодировку utf-8
+    return response
+    
 # Страница для входа
 @app.route('/', methods=['GET', 'POST'])
 def index():
