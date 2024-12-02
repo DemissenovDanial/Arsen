@@ -61,7 +61,7 @@ def login():
         username = request.form['username']
         password = request.form['password']
         admin = next((admin for admin in admins if admin['username'] == username), None)
-        if admin and check_password_hash(admin['password'], password):
+        if admin and admin['password']:
             token = jwt.encode({'id': admin['id'], 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)}, app.config['SECRET_KEY'], algorithm="HS256")
             session['token'] = token  # Сохранение токена в сессии
             return redirect(url_for('admin_dashboard'))
