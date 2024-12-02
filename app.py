@@ -154,7 +154,11 @@ def logout():
 # Инициализация базы данных и создание таблиц
 with app.app_context():
     db.create_all()
-
+    # Удаление всех записей в таблице файлов
+    File.query.delete()
+    
+    # Применение изменений в базе данных
+    db.session.commit()
 # Старт сервера
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8000))
