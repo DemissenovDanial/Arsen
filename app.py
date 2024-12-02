@@ -2,11 +2,12 @@ import os
 import hashlib
 import jwt
 import datetime
-from flask import Flask, render_template, request, redirect, url_for, send_from_directory, session, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory, session, flash, jsonify, send_file
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_migrate import Migrate  # Импортируем Migrate для работы с миграциями
 from functools import wraps
+import io
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'  # Этот ключ используется для подписи JWT
@@ -34,6 +35,7 @@ class File(db.Model):
     filename = db.Column(db.String(255), nullable=False)
     upload_date = db.Column(db.DateTime, default=db.func.current_timestamp())
     hash = db.Column(db.String(255), unique=True, nullable=False)
+    data = db.Column(db.LargeBinary)  # Столбец для хранения данных файла
 
 # Функция для проверки JWT токена
 def token_required(f):
@@ -111,7 +113,8 @@ def upload_file(current_user):
         file.save(filename)
 
         # Сохраняем информацию о файле в базу данных
-        new_file = File(filename=file.filename, hash=file_hash)
+        file_data = file.read()  # Читаем данные файла в байты
+        new_file = File(filename=file.filename, hash=file_hash, data=file_data)
         db.session.add(new_file)
         db.session.commit()
 
@@ -142,9 +145,8 @@ def delete_file(current_user, file_id):
 @app.route('/download/<file_hash>')
 def download(file_hash):
     file = File.query.filter_by(hash=file_hash).first_or_404()
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-    if os.path.exists(file_path):
-        return send_from_directory(app.config['UPLOAD_FOLDER'], file.filename)
+    if file.data:
+        return send_file(io.BytesIO(file.data), as_attachment=True, attachment_filename=file.filename)
     flash('Файл не найден', 'error')
     return redirect(url_for('admin_dashboard'))
 
@@ -158,6 +160,7 @@ def logout():
 
 # Инициализация базы данных и создание таблиц
 with app.app_context():
+    File.__table__.drop(db.engine)
     db.create_all()
 
 # Старт сервера
