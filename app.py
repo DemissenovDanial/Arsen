@@ -81,17 +81,24 @@ def login():
 # Админ-панель
 @app.route('/admin')
 @token_required
-folder_path = app.config['UPLOAD_FOLDER']
-if os.path.exists(folder_path) and os.path.isdir(folder_path):
-    files = os.listdir(folder_path)
-    if not files:
-        flash('Папка пуста.', 'warning')
+def admin_dashboard(current_user):
+    # Путь к папке загрузки
+    folder_path = app.config['UPLOAD_FOLDER']
+
+    # Проверяем наличие файлов в папке
+    if os.path.exists(folder_path) and os.path.isdir(folder_path):
+        files = os.listdir(folder_path)
+        if not files:
+            flash('Папка пуста.', 'warning')
+        else:
+            flash(f"В папке есть файлы: {files}", 'success')
     else:
-        flash(f"В папке есть файлы: {files}", 'success')
-else:
-    flash('Папка для загрузки файлов не найдена.', 'error')
-db_files = File.query.all()
-return render_template('admin_dashboard.html', files=db_files, )
+        flash('Папка для загрузки файлов не найдена.', 'error')
+
+    # Получаем список файлов из базы данных для отображения в админке
+    db_files = File.query.all()  # Или используйте свой механизм получения файлов
+    return render_template('admin_dashboard.html', files=db_files, current_user=current_user)
+
 
 
 # Загрузка файла
