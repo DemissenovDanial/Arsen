@@ -9,14 +9,22 @@
     <h1>Просмотр файла</h1>
     
     <h2>{{ file.filename }}</h2>
-    
-    <!-- Пример для изображений -->
-    {% if file.filename.endswith('.jpg') or file.filename.endswith('.png') %}
+
+    {% if file_type == 'image' %}
+        <!-- Если файл изображение -->
         <img src="{{ url_for('view_file', file_hash=file.hash) }}" alt="Просмотр файла" style="max-width: 100%; height: auto;">
-    {% elif file.filename.endswith('.txt') %}
-        <pre>{{ file.data.decode('utf-8') }}</pre>
+    {% elif file_type == 'text' %}
+        <!-- Если файл текстовый -->
+        <pre>{{ text_content }}</pre>
+    {% elif file_type == 'pdf' %}
+        <!-- Если файл PDF -->
+        <embed src="{{ url_for('view_file', file_hash=file.hash) }}" type="application/pdf" width="100%" height="600px">
+    {% elif file_type == 'docx' %}
+        <!-- Если файл DOCX -->
+        <pre>{{ text_content }}</pre>
     {% else %}
-        <p>Невозможно отобразить файл.</p>
+        <!-- Если файл другого типа -->
+        <p>Невозможно отобразить файл. Вы можете <a href="{{ url_for('download', file_hash=file.hash) }}">скачать его</a>.</p>
     {% endif %}
     
     <hr>
@@ -25,6 +33,5 @@
     <a href="{{ url_for('download', file_hash=file.hash) }}" class="btn btn-primary">Скачать файл</a>
     
     <br>
-    <a href="{{ url_for('admin_dashboard') }}">Вернуться в админ панель</a>
 </body>
 </html>
