@@ -6,6 +6,7 @@ from flask import Flask, render_template, request, redirect, url_for, send_from_
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
+from io import BytesIO
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'  # This key is used to sign the JWT
@@ -32,8 +33,9 @@ class File(db.Model):
     filename = db.Column(db.String(255), nullable=False)
     upload_date = db.Column(db.DateTime, default=db.func.current_timestamp())
     hash = db.Column(db.String(255), unique=True, nullable=False)
+    data = db.Column(db.LargeBinary, nullable=False)  # Сохраняем данные файла как BLOB
 
-# Function to verify JWT token
+# Функция для проверки JWT токена
 def token_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -52,15 +54,12 @@ def token_required(f):
         return f(current_user, *args, **kwargs)
     return decorated_function
 
-
 # Страница для входа
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
         return redirect(url_for('login'))
     return redirect(url_for('login'))
-
-from flask import session
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -76,29 +75,15 @@ def login():
             flash('Неверный логин или пароль', 'error')
     return render_template('login.html')
 
-
-
 # Страница админ панели (управление файлами)
 @app.route('/admin')
 @token_required
 def admin_dashboard(current_user):
-    # Путь к папке загрузки
-    folder_path = app.config['UPLOAD_FOLDER']
-
-    # Проверяем наличие файлов в папке
-    if os.path.exists(folder_path) and os.path.isdir(folder_path):
-        files = os.listdir(folder_path)
-        if not files:
-            flash('Папка пуста.', 'warning')
-        else:
-            flash(f"В папке есть файлы: {files}", 'success')
-    else:
-        flash('Папка для загрузки файлов не найдена.', 'error')
-
-    # Получаем список файлов из базы данных для отображения в админке
-    db_files = File.query.all()  # Или используйте свой механизм получения файлов
-    return render_template('admin_dashboard.html', files=db_files, current_user=current_user)
-
+    if not current_user:
+        flash('Необходима авторизация!', 'error')
+        return redirect(url_for('login'))
+    files = File.query.all()
+    return render_template('admin_dashboard.html', files=files, current_user=current_user)
 
 # Загрузка файла
 @app.route('/upload', methods=['POST'])
@@ -115,14 +100,13 @@ def upload_file(current_user):
 
     if file:
         # Генерация хеша для файла
-        if not os.path.exists(app.config['UPLOAD_FOLDER']):
-            os.makedirs(app.config['UPLOAD_FOLDER'])
         file_hash = hashlib.sha256(file.filename.encode()).hexdigest()
-        filename = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-        file.save(filename)
+
+        # Считывание данных файла в память
+        file_data = file.read()
 
         # Сохраняем информацию о файле в базу данных
-        new_file = File(filename=file.filename, hash=file_hash)
+        new_file = File(filename=file.filename, hash=file_hash, data=file_data)
         db.session.add(new_file)
         db.session.commit()
 
@@ -136,7 +120,6 @@ def delete_file(current_user, file_id):
     file = File.query.get(file_id)
     if file:
         try:
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], file.filename))
             db.session.delete(file)
             db.session.commit()
             flash('Файл успешно удален', 'success')
@@ -151,11 +134,8 @@ def delete_file(current_user, file_id):
 @app.route('/download/<file_hash>')
 def download(file_hash):
     file = File.query.filter_by(hash=file_hash).first_or_404()
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-    if os.path.exists(file_path):
-        return send_from_directory(app.config['UPLOAD_FOLDER'], file.filename)
-    flash('Файл не найден', 'error')
-    return redirect(url_for('admin_dashboard'))
+    # Отправляем файл из базы данных
+    return send_from_directory(directory=BytesIO(file.data), filename=file.filename, as_attachment=True)
 
 # Логин/Логаут администратора
 @app.route('/logout')
