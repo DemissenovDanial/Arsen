@@ -92,6 +92,7 @@ def admin_dashboard(current_user):
 
 
 # Загрузка файла
+# Загрузка файла
 @app.route('/upload', methods=['POST'])
 @token_required
 def upload_file(current_user):
@@ -112,14 +113,17 @@ def upload_file(current_user):
         filename = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
         file.save(filename)
 
+        # Чтение данных файла в байты
+        file_data = file.read()
+
         # Сохраняем информацию о файле в базу данных
-        file_data = file.read()  # Читаем данные файла в байты
         new_file = File(filename=file.filename, hash=file_hash, data=file_data)
         db.session.add(new_file)
         db.session.commit()
 
         flash('Файл успешно загружен', 'success')
         return redirect(url_for('admin_dashboard'))
+
 
 
 # Удаление файла
