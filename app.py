@@ -70,7 +70,6 @@ def token_required(f):
 def add_headers(response: Response):
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['Cache-Control'] = 'public, max-age=86400'  # кешировать на 1 день
-    response.headers['Content-Type'] = 'text/html; charset=utf-8'  # установить кодировку utf-8
     return response
     
 # Страница для входа
