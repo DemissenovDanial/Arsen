@@ -146,6 +146,7 @@ def download(file_hash):
         if os.path.exists(file_path):
             return send_from_directory(app.config['UPLOAD_FOLDER'], file['filename'])
     flash('Файл не найден', 'error')
+    return jsonify({'message': 'Файл не найден'})
 
 # Логин/Логаут администратора
 @app.route('/logout')
