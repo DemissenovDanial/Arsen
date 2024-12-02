@@ -207,6 +207,50 @@ def view_file(file_hash):
     flash('Файл не найден', 'error')
     return redirect(url_for('admin_dashboard'))
     
+@app.route('/file/<file_hash>')
+def view_file(file_hash):
+    file = File.query.filter_by(hash=file_hash).first_or_404()
+
+    # Определяем тип файла
+    if file.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+        file_type = 'image'
+        text_content = None
+    elif file.filename.lower().endswith('.txt'):
+        file_type = 'text'
+        text_content = file.data.decode('utf-8')
+    elif file.filename.lower().endswith('.pdf'):
+        file_type = 'pdf'
+        text_content = None
+    elif file.filename.lower().endswith('.docx'):
+        from docx import Document
+        text_content = ""
+        try:
+            doc = Document(io.BytesIO(file.data))
+            text_content = "\n".join([p.text for p in doc.paragraphs])
+        except Exception as e:
+            text_content = f"Ошибка при чтении файла: {e}"
+        file_type = 'docx'
+    else:
+        file_type = 'other'
+        text_content = None
+
+    return render_template('view_file.html', file=file, file_type=file_type, text_content=text_content)
+
+@app.route('/serve/<file_hash>')
+def serve_file_data(file_hash):
+    """Служебный маршрут для возврата данных файла (для изображений и PDF)."""
+    file = File.query.filter_by(hash=file_hash).first_or_404()
+    mime_type = None
+    if file.filename.lower().endswith('.pdf'):
+        mime_type = 'application/pdf'
+    elif file.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+        mime_type = 'image/png'  # Это пример. Убедитесь, что расширение соответствует MIME-типу.
+
+    if mime_type:
+        return send_file(io.BytesIO(file.data), mimetype=mime_type, download_name=file.filename)
+    return "Невозможно отобразить файл.", 400
+
+
 # Логин/Логаут администратора
 @app.route('/logout')
 def logout():
