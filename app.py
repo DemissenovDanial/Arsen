@@ -173,82 +173,44 @@ def download(file_hash):
 @app.route('/view/<file_hash>')
 def view_file(file_hash):
     file = File.query.filter_by(hash=file_hash).first_or_404()
-    if file.data:
-        try:
-            # Получаем MIME тип файла для правильной обработки
-            mime_type, _ = mimetypes.guess_type(file.filename)
 
-            # Если это изображение
-            if mime_type and mime_type.startswith('image'):
-                return render_template('view_file.html', file=file, file_type='image')
+    # Определяем MIME тип файла
+    mime_type, _ = mimetypes.guess_type(file.filename)
 
-            # Если это текстовый файл
-            elif mime_type == 'text/plain':
-                text_content = file.data.decode('utf-8')  # Преобразуем байты в строку
-                return render_template('view_file.html', file=file, file_type='text', text_content=text_content)
-
-            # Если это PDF файл
-            elif mime_type == 'application/pdf':
-                return render_template('view_file.html', file=file, file_type='pdf')
-
-            # Если это DOCX файл
-            elif mime_type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-                text_content = extract_text_from_docx(file.data)
-                return render_template('view_file.html', file=file, file_type='docx', text_content=text_content)
-
-            else:
-                # Для остальных типов файлов показываем только кнопку для скачивания
-                return render_template('view_file.html', file=file, file_type='other')
-
-        except Exception as e:
-            flash(f'Ошибка при отображении файла: {e}', 'error')
-            return redirect(url_for('admin_dashboard'))
-
-    flash('Файл не найден', 'error')
-    return redirect(url_for('admin_dashboard'))
-    
-@app.route('/file/<file_hash>')
-def view_file(file_hash):
-    file = File.query.filter_by(hash=file_hash).first_or_404()
-
-    # Определяем тип файла
-    if file.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
+    # Логика обработки типов файлов
+    if mime_type and mime_type.startswith('image'):
         file_type = 'image'
         text_content = None
-    elif file.filename.lower().endswith('.txt'):
+    elif mime_type == 'text/plain':
         file_type = 'text'
         text_content = file.data.decode('utf-8')
-    elif file.filename.lower().endswith('.pdf'):
+    elif mime_type == 'application/pdf':
         file_type = 'pdf'
         text_content = None
-    elif file.filename.lower().endswith('.docx'):
-        from docx import Document
-        text_content = ""
+    elif mime_type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+        file_type = 'docx'
         try:
-            doc = Document(io.BytesIO(file.data))
-            text_content = "\n".join([p.text for p in doc.paragraphs])
+            text_content = extract_text_from_docx(file.data)
         except Exception as e:
             text_content = f"Ошибка при чтении файла: {e}"
-        file_type = 'docx'
     else:
         file_type = 'other'
         text_content = None
 
+    # Отправляем данные в шаблон
     return render_template('view_file.html', file=file, file_type=file_type, text_content=text_content)
+
 
 @app.route('/serve/<file_hash>')
 def serve_file_data(file_hash):
-    """Служебный маршрут для возврата данных файла (для изображений и PDF)."""
+    """Служебный маршрут для отдачи данных файла."""
     file = File.query.filter_by(hash=file_hash).first_or_404()
-    mime_type = None
-    if file.filename.lower().endswith('.pdf'):
-        mime_type = 'application/pdf'
-    elif file.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
-        mime_type = 'image/png'  # Это пример. Убедитесь, что расширение соответствует MIME-типу.
 
-    if mime_type:
-        return send_file(io.BytesIO(file.data), mimetype=mime_type, download_name=file.filename)
-    return "Невозможно отобразить файл.", 400
+    # Определяем MIME тип
+    mime_type, _ = mimetypes.guess_type(file.filename)
+
+    # Отправляем файл с соответствующим MIME типом
+    return send_file(io.BytesIO(file.data), mimetype=mime_type, download_name=file.filename)
 
 
 # Логин/Логаут администратора
