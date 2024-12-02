@@ -146,7 +146,7 @@ def delete_file(current_user, file_id):
 def download(file_hash):
     file = File.query.filter_by(hash=file_hash).first_or_404()
     if file.data:
-        return send_file(io.BytesIO(file.data), as_attachment=True, attachment_filename=file.filename)
+        return send_file(io.BytesIO(file.data), as_attachment=True, attachment_filename=file.filename, mimetype='application/octet-stream')
     flash('Файл не найден', 'error')
     return redirect(url_for('admin_dashboard'))
 
