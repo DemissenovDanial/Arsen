@@ -16,11 +16,20 @@ ADMIN_DATA_FILE = 'admins.json'
 FILES_DATA_FILE = 'files.json'
 
 # Функция для загрузки данных из JSON
+import os
+
 def load_data(file_path):
     if not os.path.exists(file_path):
+        print(f"Файл {file_path} не найден. Создание пустого файла.")
+        with open(file_path, 'w') as f:
+            f.write('[]')  # Создаем пустой список JSON
         return []
-    with open(file_path, 'r') as file:
-        return json.load(file)
+    try:
+        with open(file_path, 'r') as file:
+            return json.load(file)
+    except json.JSONDecodeError:
+        print(f"Ошибка чтения JSON в {file_path}. Файл поврежден.")
+        return []
 
 # Функция для сохранения данных в JSON
 def save_data(file_path, data):
