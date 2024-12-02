@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Просмотр файла</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
 </head>
 <body>
     <h1>Просмотр файла</h1>
@@ -18,7 +19,12 @@
         <pre>{{ text_content }}</pre>
     {% elif file_type == 'pdf' %}
         <!-- Если файл PDF -->
-        <embed data="{{ url_for('serve_file', file_hash=file.hash) }}" type="application/pdf" width="100%" height="600px"></embed>
+        <div id="pdf-container">
+            <canvas id="pdf-canvas" width="100%" height="600px"></canvas>
+            <br>
+            <button id="prev-page">Предыдущая страница</button>
+            <button id="next-page">Следующая страница</button>
+        </div>
     {% elif file_type == 'docx' %}
         <!-- Если файл DOCX -->
         <pre>{{ text_content }}</pre>
@@ -31,5 +37,50 @@
     
     <!-- Ссылка для скачивания -->
     <a href="{{ url_for('download', file_hash=file.hash) }}" class="btn btn-primary">Скачать файл</a>
+
+    <script>
+        {% if file_type == 'pdf' %}
+            var url = "{{ url_for('serve_file', file_hash=file.hash) }}"; // Путь к PDF файлу
+            var canvas = document.getElementById('pdf-canvas');
+            var ctx = canvas.getContext('2d');  // Контекст для рисования на холсте
+
+            var currentPage = 1;
+            var pdfDoc = null;
+
+            // Загружаем PDF документ
+            pdfjsLib.getDocument(url).promise.then(function(pdf) {
+                pdfDoc = pdf;
+                renderPage(currentPage);
+            });
+
+            // Рендеринг страницы
+            function renderPage(pageNum) {
+                pdfDoc.getPage(pageNum).then(function(page) {
+                    var viewport = page.getViewport({ scale: 1 });
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+                    page.render({
+                        canvasContext: ctx,
+                        viewport: viewport
+                    });
+                });
+            }
+
+            // Навигация между страницами
+            document.getElementById('prev-page').addEventListener('click', function() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderPage(currentPage);
+                }
+            });
+
+            document.getElementById('next-page').addEventListener('click', function() {
+                if (currentPage < pdfDoc.numPages) {
+                    currentPage++;
+                    renderPage(currentPage);
+                }
+            });
+        {% endif %}
+    </script>
 </body>
 </html>
