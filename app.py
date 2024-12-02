@@ -120,8 +120,6 @@ def delete_file(current_user, file_id):
     if file:
         os.remove(os.path.join(app.config['UPLOAD_FOLDER'], file))
         flash('Файл успешно удален', 'success')
-    except Exception as e:
-        flash(f'Ошибка при удалении файла: {e}', 'error')
     else:
         flash('Файл не найден', 'error')
     return redirect(url_for('admin_dashboard'))
