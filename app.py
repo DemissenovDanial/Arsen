@@ -5,15 +5,16 @@ import datetime
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory, session, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_migrate import Migrate  # Импортируем Migrate для работы с миграциями
 from functools import wraps
-from io import BytesIO
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your_secret_key_here'  # This key is used to sign the JWT
+app.config['SECRET_KEY'] = 'your_secret_key_here'  # Этот ключ используется для подписи JWT
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://edo_db:9CxmsGqtplllIiNHeLWQRNlLQfv7IfAE@dpg-ct67sblumphs73949hd0-a/edo_db'
 app.config['UPLOAD_FOLDER'] = 'uploads'
 
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)  # Инициализируем миграции
 
 # Модели данных
 class Admins(db.Model):
@@ -28,26 +29,11 @@ class Admins(db.Model):
         return check_password_hash(self.password, password)
 
 
-# Для добавления столбца 'data' в таблицу
 class File(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(255), nullable=False)
     upload_date = db.Column(db.DateTime, default=db.func.current_timestamp())
     hash = db.Column(db.String(255), unique=True, nullable=False)
-    data = db.Column(db.LargeBinary)  # Добавляем столбец 'data'
-
-# Выполните миграцию
-from flask_migrate import Migrate, MigrateCommand
-from flask_script import Manager
-
-migrate = Migrate(app, db)
-manager = Manager(app)
-manager.add_command('db', MigrateCommand)
-
-# Команда для выполнения миграции:
-# python manage.py db migrate
-# python manage.py db upgrade
-
 
 # Функция для проверки JWT токена
 def token_required(f):
@@ -68,12 +54,14 @@ def token_required(f):
         return f(current_user, *args, **kwargs)
     return decorated_function
 
+
 # Страница для входа
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
         return redirect(url_for('login'))
     return redirect(url_for('login'))
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -83,11 +71,12 @@ def login():
         admin = Admins.query.filter_by(username=username).first()
         if admin and check_password_hash(admin.password, password):
             token = jwt.encode({'id': admin.id, 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)}, app.config['SECRET_KEY'], algorithm="HS256")
-            session['token'] = token  # Сохранение токена в сессии
+            session['token'] = token  # Сохраняем токен в сессии
             return redirect(url_for('admin_dashboard'))
         else:
             flash('Неверный логин или пароль', 'error')
     return render_template('login.html')
+
 
 # Страница админ панели (управление файлами)
 @app.route('/admin')
@@ -98,6 +87,7 @@ def admin_dashboard(current_user):
         return redirect(url_for('login'))
     files = File.query.all()
     return render_template('admin_dashboard.html', files=files, current_user=current_user)
+
 
 # Загрузка файла
 @app.route('/upload', methods=['POST'])
@@ -114,18 +104,20 @@ def upload_file(current_user):
 
     if file:
         # Генерация хеша для файла
+        if not os.path.exists(app.config['UPLOAD_FOLDER']):
+            os.makedirs(app.config['UPLOAD_FOLDER'])
         file_hash = hashlib.sha256(file.filename.encode()).hexdigest()
-
-        # Считывание данных файла в память
-        file_data = file.read()
+        filename = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+        file.save(filename)
 
         # Сохраняем информацию о файле в базу данных
-        new_file = File(filename=file.filename, hash=file_hash, data=file_data)
+        new_file = File(filename=file.filename, hash=file_hash)
         db.session.add(new_file)
         db.session.commit()
 
         flash('Файл успешно загружен', 'success')
         return redirect(url_for('admin_dashboard'))
+
 
 # Удаление файла
 @app.route('/delete/<int:file_id>', methods=['POST'])
@@ -134,6 +126,7 @@ def delete_file(current_user, file_id):
     file = File.query.get(file_id)
     if file:
         try:
+            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], file.filename))
             db.session.delete(file)
             db.session.commit()
             flash('Файл успешно удален', 'success')
@@ -144,12 +137,17 @@ def delete_file(current_user, file_id):
 
     return redirect(url_for('admin_dashboard'))
 
+
 # Скачивание файла по хешу
 @app.route('/download/<file_hash>')
 def download(file_hash):
     file = File.query.filter_by(hash=file_hash).first_or_404()
-    # Отправляем файл из базы данных
-    return send_from_directory(directory=BytesIO(file.data), filename=file.filename, as_attachment=True)
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+    if os.path.exists(file_path):
+        return send_from_directory(app.config['UPLOAD_FOLDER'], file.filename)
+    flash('Файл не найден', 'error')
+    return redirect(url_for('admin_dashboard'))
+
 
 # Логин/Логаут администратора
 @app.route('/logout')
@@ -157,6 +155,8 @@ def logout():
     session.pop('token', None)  # Удаляем токен из сессии
     return redirect(url_for('index'))  # Правильное имя функции
 
+
+# Инициализация базы данных и создание таблиц
 with app.app_context():
     db.create_all()
 
