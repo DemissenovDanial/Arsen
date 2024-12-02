@@ -3,6 +3,7 @@ import hashlib
 import jwt
 import datetime
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory, session, flash, jsonify
+from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_migrate import Migrate  # Импортируем Migrate для работы с миграциями
 from functools import wraps
@@ -12,11 +13,7 @@ app.config['SECRET_KEY'] = 'your_secret_key_here'  # Этот ключ испо�
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://edo_db:9CxmsGqtplllIiNHeLWQRNlLQfv7IfAE@dpg-ct67sblumphs73949hd0-a/edo_db'
 app.config['UPLOAD_FOLDER'] = 'uploads'
 
-# Инициализируем db после создания приложения
-from flask_sqlalchemy import SQLAlchemy
 db = SQLAlchemy(app)
-
-# Инициализируем миграции
 migrate = Migrate(app, db)  # Инициализируем миграции
 
 # Модели данных
@@ -57,12 +54,14 @@ def token_required(f):
         return f(current_user, *args, **kwargs)
     return decorated_function
 
+
 # Страница для входа
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
         return redirect(url_for('login'))
     return redirect(url_for('login'))
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -78,6 +77,7 @@ def login():
             flash('Неверный логин или пароль', 'error')
     return render_template('login.html')
 
+
 # Страница админ панели (управление файлами)
 @app.route('/admin')
 @token_required
@@ -87,6 +87,7 @@ def admin_dashboard(current_user):
         return redirect(url_for('login'))
     files = File.query.all()
     return render_template('admin_dashboard.html', files=files, current_user=current_user)
+
 
 # Загрузка файла
 @app.route('/upload', methods=['POST'])
@@ -117,6 +118,7 @@ def upload_file(current_user):
         flash('Файл успешно загружен', 'success')
         return redirect(url_for('admin_dashboard'))
 
+
 # Удаление файла
 @app.route('/delete/<int:file_id>', methods=['POST'])
 @token_required
@@ -135,6 +137,7 @@ def delete_file(current_user, file_id):
 
     return redirect(url_for('admin_dashboard'))
 
+
 # Скачивание файла по хешу
 @app.route('/download/<file_hash>')
 def download(file_hash):
@@ -145,20 +148,18 @@ def download(file_hash):
     flash('Файл не найден', 'error')
     return redirect(url_for('admin_dashboard'))
 
+
 # Логин/Логаут администратора
 @app.route('/logout')
 def logout():
     session.pop('token', None)  # Удаляем токен из сессии
     return redirect(url_for('index'))  # Правильное имя функции
 
+
 # Инициализация базы данных и создание таблиц
 with app.app_context():
     db.create_all()
-    # Удаление всех записей в таблице файлов
-    File.query.delete()
-    
-    # Применение изменений в базе данных
-    db.session.commit()
+
 # Старт сервера
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8000))
