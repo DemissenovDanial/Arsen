@@ -18,7 +18,9 @@
         <pre>{{ text_content }}</pre>
     {% elif file_type == 'pdf' %}
         <!-- Если файл PDF -->
-        <iframe src="{{ url_for('serve_file_data', file_hash=file.hash) }}" width="100%" height="500px" style="border: none;"></iframe>
+        <object data="{{ url_for('serve_file', file_hash=file.hash) }}" type="application/pdf" width="100%" height="600px">
+            Ваш браузер не поддерживает просмотр PDF файлов.
+        </object>
     {% elif file_type == 'docx' %}
         <!-- Если файл DOCX -->
         <pre>{{ text_content }}</pre>
