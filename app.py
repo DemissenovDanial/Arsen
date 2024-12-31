@@ -14,7 +14,7 @@ from docx import Document  # Для обработки DOCX файлов
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'  # Этот ключ используется для подписи JWT
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://edo_db:9CxmsGqtplllIiNHeLWQRNlLQfv7IfAE@dpg-ct67sblumphs73949hd0-a/edo_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://edo_db:3RFnDyNDcwoq9w6pqDejjhKEpsR2Lfi2@dpg-ctpplfq3esus73dk36s0-a/edo_db_eqa3'
 app.config['SQLALCHEMY_ECHO'] = True  # Включает вывод SQL-запросов в консоль
 
 db = SQLAlchemy(app)
