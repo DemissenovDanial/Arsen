@@ -11,6 +11,7 @@ import io
 import mimetypes
 from werkzeug.utils import secure_filename
 from docx import Document  # Для обработки DOCX файлов
+import json
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'  # Этот ключ используется для подписи JWT
