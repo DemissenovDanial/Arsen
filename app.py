@@ -31,6 +31,33 @@ class Admins(db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password, password)
+        
+def load_admins_from_json():
+    try:
+        # Открываем файл admins.json
+        with open('admins.json', 'r') as f:
+            admins_data = json.load(f)  # Загружаем данные из JSON
+
+        for admin in admins_data:
+            username = admin.get('username')
+            password = admin.get('password')
+
+            if username and password:
+                # Проверяем, существует ли администратор в базе данных
+                existing_admin = Admins.query.filter_by(username=username).first()
+                if not existing_admin:
+                    # Если администратора нет, добавляем его с хешированным паролем
+                    new_admin = Admins(username=username)
+                    new_admin.set_password(password)  # Хешируем и сохраняем пароль
+                    db.session.add(new_admin)
+        db.session.commit()  # Сохраняем изменения в базе данных
+        print("Администраторы успешно загружены из файла admins.json")
+    except FileNotFoundError:
+        print("Файл admins.json не найден. Проверьте наличие файла в папке.")
+    except json.JSONDecodeError:
+        print("Ошибка декодирования файла admins.json. Проверьте формат файла.")
+    except Exception as e:
+        print(f"Произошла ошибка: {e}")
 
 
 class File(db.Model):
@@ -227,6 +254,7 @@ def logout():
 # Инициализация базы данных и создание таблиц
 with app.app_context():
     db.create_all()
+    load_admins_from_json() 
 
 # Старт сервера
 if __name__ == '__main__':
