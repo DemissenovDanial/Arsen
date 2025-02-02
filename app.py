@@ -15,7 +15,7 @@ import json
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'  # Этот ключ используется для подписи JWT
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://edo_db:3RFnDyNDcwoq9w6pqDejjhKEpsR2Lfi2@dpg-ctpplfq3esus73dk36s0-a/edo_db_eqa3'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://edo_db:V1eq2f1ShXhZInjDa9ua6YhKNwonYXxr@dpg-cufma4popnds73b6r0e0-a/edo_db_odav'
 app.config['SQLALCHEMY_ECHO'] = True  # Включает вывод SQL-запросов в консоль
 
 db = SQLAlchemy(app)
